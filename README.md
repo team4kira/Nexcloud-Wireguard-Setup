@@ -23,6 +23,112 @@ This guide documents a secure, reusable setup for accessing a self-hosted Nextcl
 - **UFW**: controls inbound access on the Raspberry Pi.
 - **firewalld**: controls inbound access on the Arch Linux PC.
 
+## Install Nextcloud
+
+DietPi provides Nextcloud through its software installer:
+
+```bash
+dietpi-software
+```
+
+Select the Nextcloud option and follow the installer prompts.
+
+After installation, Nextcloud is commonly available at:
+
+```text
+http://pi.example.local/nextcloud
+```
+
+DietPi documents that its Nextcloud installation is accessible through HTTP/HTTPS ports 80/443 under the `/nextcloud` path. 
+
+Create the Nextcloud administrator account during setup. Use a unique, long password and store it in a password manager.
+
+## Move Nextcloud data to the external drive
+
+Confirm the current data directory:
+
+```bash
+sudo -u www-data php /var/www/nextcloud/occ config:system:get datadirectory
+```
+
+For this setup, the data directory is:
+
+```text
+/mnt/external-drive/nextcloud/data
+```
+
+Confirm that the external drive is mounted and has enough space:
+
+```bash
+findmnt -T /mnt/external-drive
+df -h /mnt/external-drive
+```
+
+A healthy result shows the drive mounted at `/mnt/external-drive`, with adequate free space and read-write access.
+
+## Install WireGuard with PiVPN
+
+DietPi supports PiVPN and WireGuard through its software menu:
+
+```bash
+dietpi-software
+```
+
+Choose the VPN option and select WireGuard as the VPN server. DietPi’s documentation describes PiVPN installation and notes that WireGuard server or client configurations can be managed with DietPi-WireGuard. 
+
+After installation, create a client profile for the phone:
+
+```bash
+pivpn add
+```
+
+Follow the prompts to create a client profile. PiVPN provides commands for managing the VPN server and generating client configurations. 
+
+## Configure the WireGuard network
+
+Use a private address range that does not conflict with the home network.
+
+Example:
+
+```text
+Home network: 192.168.1.0/24
+WireGuard network: 10.0.0.0/24
+```
+
+The Pi acts as the WireGuard server. The phone is a peer.
+
+A basic server configuration has this structure:
+
+```ini
+[Interface]
+Address = 10.0.0.1/24
+ListenPort = 51820
+PrivateKey = SERVER_PRIVATE_KEY
+
+[Peer]
+PublicKey = PHONE_PUBLIC_KEY
+AllowedIPs = 10.0.0.2/32
+```
+
+A basic phone configuration has this structure:
+
+```ini
+[Interface]
+PrivateKey = PHONE_PRIVATE_KEY
+Address = 10.0.0.2/32
+DNS = 192.168.1.1
+
+[Peer]
+PublicKey = SERVER_PUBLIC_KEY
+Endpoint = home.example.ddns.net:51820
+AllowedIPs = 192.168.1.0/24
+PersistentKeepalive = 25
+```
+
+WireGuard configurations consist of an interface and one or more peers, with keys, allowed IP ranges, and endpoint details. 
+
+Important: do not paste real private keys into documentation, chat messages, screenshots, or version control.
+
 ## Security model
 
 The preferred remote-access path is WireGuard. Public HTTPS access is required only for Let’s Encrypt HTTP-01 certificate issuance and renewal.
